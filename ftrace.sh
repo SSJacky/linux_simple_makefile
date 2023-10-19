@@ -1,7 +1,9 @@
 #!/bin/sh
 
-set -ex
-tracing=~/tracing
+echo "Parameter is $1"
+
+set -e
+trace=~/tracing
 
 if [ ! -d "/tracing" ]; then
         echo "start mount"
@@ -13,26 +15,58 @@ fi
 # clean trace
 echo 0 > $trace/tracing_on
 echo > $trace/trace
-# set tracer
-echo function_graph > $trace/current_tracer
-cat $trace/current_tracer
-#echo 'load_module:traceon' > $trace/set_ftrace_filter 
-#echo load_module > $trace/set_ftrace_filter 
 
-#-- test module load
-cat $trace/set_ftrace_filter
+cd $trace
+
+if [ "$1" = "1" ]; then
+#---------------------------------------------test 1 module load
 # set load module and trace on
-echo 'load_module:traceon' > $trace/set_ftrace_filter
-echo ':mod:module3' >> $trace/set_ftrace_filter 
-cat $trace/set_ftrace_filter 
+    echo "test 1 module load"
+    set tracer
+    echo function_graph > $trace/current_tracer
+    cat $trace/current_tracer
+    echo > trace
+    echo 'load_module:traceon' > set_ftrace_filter
+    echo ':mod:module3' >> set_ftrace_filter 
+    cat set_ftrace_filter 
+    modprobe module3
+    echo 0 > tracing_on
+    cat trace
+    modprobe -r module3
+#---------------------------------------------end of test 1
+fi
 
+if [ "$1" = "2" ]; then
+#---------------------------------------------test 2 all function
+# set load module and trace on
+    echo "test 2 all function"
+    echo > trace
+    sysctl kernel.ftrace_enabled=1  #启用ftrace 
+    echo 1 > tracing_on
+    usleep 1
+    echo 0 > tracing_on
+    cat trace
+#---------------------------------------------end of test 2
+fi
 
-#echo $$ >> $trace/set_ftrace_pid
-#echo module1 > $trace/set_event
-#echo load_module > sys/kernel/debug/tracing/set_graph_function 
-#echo 1 > sys/kernel/debug/tracing/tracing_on
-#modprobe module3
-#echo my_function >> set_ftrace_filter
-echo 0 > $trace/tracing_on
-cat $trace/trace
+if [ "$1" = "3" ]; then
+#---------------------------------------------test 3 irq off
+    echo "test 3 irq off"
+    echo > trace
+    # trace all function or not
+    echo 1 > options/function-trace
+    echo irqsoff > current_tracer
+    echo 1 > tracing_on	
+    echo 0 > tracing_max_latency
+    echo 0 > tracing_on
+    cat trace
+#---------------------------------------------end of test 3
+fi
+
+if [ "$1" -gt 3 ]; then
+    echo "out of boundary"
+fi
+
+#chmod +x ftrace*
+
 
